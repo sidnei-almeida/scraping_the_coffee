@@ -24,7 +24,7 @@ from config.browser import get_preferred_browser
 
 def get_webdriver() -> Optional[webdriver.Remote]:
     """
-    Retorna uma instância do WebDriver configurada para o navegador preferido.
+    Retorna uma instância do WebDriver configurada para o navegador preferido em modo headless.
     
     Returns:
         Uma instância do WebDriver ou None se nenhum navegador compatível for encontrado.
@@ -34,30 +34,64 @@ def get_webdriver() -> Optional[webdriver.Remote]:
 
     if preferred_browser == 'chrome':
         try:
+            from selenium.webdriver.chrome.options import Options
+            chrome_options = Options()
+            chrome_options.add_argument("--headless")
+            chrome_options.add_argument("--no-sandbox")
+            chrome_options.add_argument("--disable-dev-shm-usage")
+            chrome_options.add_argument("--disable-gpu")
+            chrome_options.add_argument("--window-size=1920,1080")
+            chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+            
             service = ChromeService(ChromeDriverManager().install())
-            driver = webdriver.Chrome(service=service)
-            print("WebDriver Chrome inicializado com sucesso.")
+            driver = webdriver.Chrome(service=service, options=chrome_options)
+            print("WebDriver Chrome inicializado com sucesso (modo headless).")
         except Exception as e:
             print(f"Erro ao inicializar WebDriver Chrome: {e}")
     elif preferred_browser == 'chromium':
         try:
+            from selenium.webdriver.chrome.options import Options
+            chrome_options = Options()
+            chrome_options.add_argument("--headless")
+            chrome_options.add_argument("--no-sandbox")
+            chrome_options.add_argument("--disable-dev-shm-usage")
+            chrome_options.add_argument("--disable-gpu")
+            chrome_options.add_argument("--window-size=1920,1080")
+            chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+            
             service = ChromeService(ChromeDriverManager(chrome_type="chromium").install())
-            driver = webdriver.Chrome(service=service)
-            print("WebDriver Chromium inicializado com sucesso.")
+            driver = webdriver.Chrome(service=service, options=chrome_options)
+            print("WebDriver Chromium inicializado com sucesso (modo headless).")
         except Exception as e:
             print(f"Erro ao inicializar WebDriver Chromium: {e}")
     elif preferred_browser == 'firefox':
         try:
+            from selenium.webdriver.firefox.options import Options
+            firefox_options = Options()
+            firefox_options.add_argument("--headless")
+            firefox_options.add_argument("--width=1920")
+            firefox_options.add_argument("--height=1080")
+            firefox_options.set_preference("general.useragent.override", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:120.0) Gecko/20100101 Firefox/120.0")
+            
             service = FirefoxService(GeckoDriverManager().install())
-            driver = webdriver.Firefox(service=service)
-            print("WebDriver Firefox inicializado com sucesso.")
+            driver = webdriver.Firefox(service=service, options=firefox_options)
+            print("WebDriver Firefox inicializado com sucesso (modo headless).")
         except Exception as e:
             print(f"Erro ao inicializar WebDriver Firefox: {e}")
     elif preferred_browser == 'edge':
         try:
+            from selenium.webdriver.edge.options import Options
+            edge_options = Options()
+            edge_options.add_argument("--headless")
+            edge_options.add_argument("--no-sandbox")
+            edge_options.add_argument("--disable-dev-shm-usage")
+            edge_options.add_argument("--disable-gpu")
+            edge_options.add_argument("--window-size=1920,1080")
+            edge_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0")
+            
             service = EdgeService(EdgeChromiumDriverManager().install())
-            driver = webdriver.Edge(service=service)
-            print("WebDriver Edge inicializado com sucesso.")
+            driver = webdriver.Edge(service=service, options=edge_options)
+            print("WebDriver Edge inicializado com sucesso (modo headless).")
         except Exception as e:
             print(f"Erro ao inicializar WebDriver Edge: {e}")
     else:
@@ -183,6 +217,95 @@ def extrair_dados_tabela_nutricional(driver: webdriver.Remote) -> Dict[str, str]
                             
         except Exception as e:
             print(f"Erro ao buscar porção: {e}")
+        
+        # NOVA FUNCIONALIDADE: Extrair valor quantitativo da segunda coluna da tabela
+        # e adicionar à porção se ela não já contiver "g" ou "ml"
+        valor_quantitativo_porcao = ""
+        try:
+            # Verifica se a porção atual já contém "g" ou "ml"
+            porcao_atual = dados['PORCAO (g)']
+            if porcao_atual and porcao_atual != '0':
+                if 'g' in porcao_atual.lower() or 'ml' in porcao_atual.lower():
+                    print(f"✅ Porção já contém valor quantitativo: '{porcao_atual}'")
+                else:
+                    print(f"🔍 Porção não contém valor quantitativo, buscando na tabela...")
+                    
+                    # Mapeamento de porções conhecidas (apenas as padronizadas)
+                    porcoes_conhecidas = {
+                        '1 copo grande': '330ml',
+                        '1 copo médio': '220ml'
+                    }
+                    
+                    # Verifica se é uma porção conhecida
+                    porcao_limpa = porcao_atual.lower().strip()
+                    print(f"🔍 Verificando porção: '{porcao_atual}' → '{porcao_limpa}'")
+                    print(f"🔍 Porções conhecidas: {list(porcoes_conhecidas.keys())}")
+                    
+                    if porcao_limpa in porcoes_conhecidas:
+                        valor_quantitativo_porcao = porcoes_conhecidas[porcao_limpa]
+                        print(f"✅ Porção conhecida encontrada: '{porcao_atual}' → '{valor_quantitativo_porcao}'")
+                        
+                        # Adiciona o valor quantitativo entre parênteses na porção
+                        nova_porcao = f"{porcao_atual} ({valor_quantitativo_porcao})"
+                        dados['PORCAO (g)'] = nova_porcao
+                        print(f"✅ Porção atualizada: '{nova_porcao}'")
+                    else:
+                        print(f"❌ Porção '{porcao_limpa}' não encontrada no mapeamento")
+                        # Se não for conhecida, tenta extrair da tabela
+                        # Localiza a tabela para extrair o cabeçalho da terceira coluna
+                        tabela = popup.find_element(By.CSS_SELECTOR, "table")
+                        
+                        # Busca pelos cabeçalhos da tabela (th)
+                        cabecalhos = tabela.find_elements(By.TAG_NAME, "th")
+                        print(f"Encontrados {len(cabecalhos)} cabeçalhos na tabela")
+                        
+                        if len(cabecalhos) >= 3:  # Precisamos pelo menos 3 colunas (100g, porção, %VD)
+                            # A terceira coluna (índice 2) contém o valor da porção (ex: "30g", "120g")
+                            terceiro_cabecalho = cabecalhos[2].text.strip()
+                            print(f"Cabeçalho da terceira coluna (porção): '{terceiro_cabecalho}'")
+                            
+                            # Extrai o valor quantitativo diretamente do texto do cabeçalho
+                            import re
+                            # Regex para capturar números + unidades (ml, g, kg, l)
+                            match = re.search(r'(\d+(?:[.,]\d+)?\s*(?:ml|g|kg|l))', terceiro_cabecalho, re.IGNORECASE)
+                            if match:
+                                valor_quantitativo_porcao = match.group(1).strip()
+                                print(f"✅ Valor quantitativo extraído: '{valor_quantitativo_porcao}'")
+                                
+                                # Adiciona o valor quantitativo entre parênteses na porção
+                                nova_porcao = f"{porcao_atual} ({valor_quantitativo_porcao})"
+                                dados['PORCAO (g)'] = nova_porcao
+                                print(f"✅ Porção atualizada: '{nova_porcao}'")
+                            else:
+                                # Fallback: extrai apenas o número e identifica a unidade
+                                match_numero = re.search(r'(\d+(?:[.,]\d+)?)', terceiro_cabecalho)
+                                if match_numero:
+                                    numero = match_numero.group(1)
+                                    # Identifica a unidade no texto
+                                    if 'ml' in terceiro_cabecalho.lower():
+                                        valor_quantitativo_porcao = f"{numero}ml"
+                                    elif 'g' in terceiro_cabecalho.lower():
+                                        valor_quantitativo_porcao = f"{numero}g"
+                                    elif 'kg' in terceiro_cabecalho.lower():
+                                        valor_quantitativo_porcao = f"{numero}kg"
+                                    elif 'l' in terceiro_cabecalho.lower():
+                                        valor_quantitativo_porcao = f"{numero}l"
+                                    else:
+                                        valor_quantitativo_porcao = numero
+                                    
+                                    print(f"✅ Valor quantitativo extraído (fallback): '{valor_quantitativo_porcao}'")
+                                    nova_porcao = f"{porcao_atual} ({valor_quantitativo_porcao})"
+                                    dados['PORCAO (g)'] = nova_porcao
+                                    print(f"✅ Porção atualizada: '{nova_porcao}'")
+                                else:
+                                    print(f"❌ Não foi possível extrair valor quantitativo de '{terceiro_cabecalho}'")
+                        else:
+                            print(f"❌ Tabela não possui colunas suficientes para extrair valor quantitativo")
+            else:
+                print(f"⚠️  Porção não encontrada ou vazia, pulando extração de valor quantitativo")
+                
+        except Exception as e:
+            print(f"Erro ao extrair valor quantitativo da porção: {e}")
         
         # Mapeia os nomes dos nutrientes para as chaves do nosso dicionário
         # Nomes exatos como aparecem na tabela
@@ -413,13 +536,104 @@ def salvar_dados_csv(dados: List[Dict[str, str]], pasta_dados: str = "dados") ->
     # Cria a pasta se não existir
     os.makedirs(pasta_dados, exist_ok=True)
     
+    # Cria DataFrame
+    df = pd.DataFrame(dados)
+    
+    # Processa as porções antes de salvar
+    print("🔧 Processando porções conhecidas...")
+    
+    # Mapeamento completo de porções conhecidas (baseado nos dados coletados)
+    porcoes_conhecidas = {
+        # Porções de copo grande (330ml)
+        '1 copo grande': '330ml',
+        '1/2 copo grande': '165ml',
+        '1/3 copo grande': '110ml',
+        '2/3 copo grande': '220ml',
+        
+        # Porções de copo médio (220ml)
+        '1 copo médio': '220ml',
+        '1/2 copo médio': '110ml',
+        '1/3 copo médio': '73ml',
+        '2/3 copo médio': '147ml',
+        
+        # Porções de copo pequeno (assumindo ~180ml baseado nos dados)
+        '1 copo pequeno': '180ml',
+        '1/2 copo pequeno': '90ml',
+        '1/3 copo pequeno': '60ml',
+        '2/3 copo pequeno': '120ml',
+        
+        # Porções de unidades (baseado nos dados coletados)
+        '1 unidade': '50g',  # Croissant Traditional
+        '1/2 unidade': '25g',
+        '1/3 unidade': '17g',
+        '2/3 unidade': '33g',
+        '3/4 unidade': '38g',
+        
+        # Porções de fatias (baseado nos dados coletados)
+        '1 fatia': '60g',  # Banana Cake, Lemon Cake
+        '1/2 fatia': '30g',
+        '1/3 fatia': '20g',
+        '2/3 fatia': '40g',
+        '3/4 fatia': '45g',
+        
+        # Porções específicas encontradas nos dados
+        '1/2 copo pequeno': '90ml',  # Pure Black (Double Shot)
+        '1/2 copo médio': '110ml',   # Americano
+        '2/3 da unidade': '33g',     # Brownie
+        '3/4 da unidade': '38g',     # Cookie Traditional
+        '3/4 de unidade': '38g',     # Macadâmia Cookie
+        
+        # Porções específicas encontradas nos dados (sem valores quantitativos)
+        '1/2 copo pequeno': '90ml',  # Pure Black (Double Shot)
+        '1/2 copo médio': '110ml',   # Americano
+        '2/3 da unidade': '33g',     # Brownie
+        '3/4 da unidade': '38g',     # Cookie Traditional
+        '3/4 de unidade': '38g'      # Macadâmia Cookie
+    }
+    
+    # Aplica o mapeamento na coluna PORCAO (g)
+    total_atualizadas = 0
+    porcoes_processadas = []
+    
+    for porcao_original, valor_quantitativo in porcoes_conhecidas.items():
+        # Encontra linhas onde a porção é exatamente igual
+        mask = df['PORCAO (g)'] == porcao_original
+        
+        # Verifica se a porção já tem formato correto (contém parênteses com valor)
+        if mask.any():
+            # Verifica se já tem formato correto (ex: "1 unidade (50g)")
+            porcoes_ja_formatadas = df.loc[mask, 'PORCAO (g)'].str.contains(r'\([^)]+\)', regex=True)
+            
+            # Só processa as que não têm formato correto
+            mask_para_processar = mask & ~porcoes_ja_formatadas
+            
+            if mask_para_processar.any():
+                # Adiciona o valor quantitativo entre parênteses
+                nova_porcao = f"{porcao_original} ({valor_quantitativo})"
+                df.loc[mask_para_processar, 'PORCAO (g)'] = nova_porcao
+                count = mask_para_processar.sum()
+                total_atualizadas += count
+                porcoes_processadas.append(f"'{porcao_original}' ({count}x)")
+                print(f"✅ Atualizadas {count} porções: '{porcao_original}' → '{nova_porcao}'")
+            else:
+                # Se todas já têm formato correto, não processa
+                count_ja_formatadas = mask.sum()
+                print(f"ℹ️  {count_ja_formatadas} porções '{porcao_original}' já têm formato correto (puladas)")
+    
+    # Mostra estatísticas finais
+    if total_atualizadas > 0:
+        print(f"\n📊 RESUMO: {total_atualizadas} porções foram atualizadas:")
+        for porcao in porcoes_processadas:
+            print(f"   • {porcao}")
+    else:
+        print(f"\nℹ️  Nenhuma porção precisou ser atualizada (todas já tinham valores quantitativos)")
+    
     # Nome do arquivo com timestamp
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     nome_arquivo = f"dados_nutricionais_the_coffee_{timestamp}.csv"
     caminho_arquivo = os.path.join(pasta_dados, nome_arquivo)
     
-    # Cria DataFrame e salva
-    df = pd.DataFrame(dados)
+    # Salva o DataFrame processado
     df.to_csv(caminho_arquivo, index=False, encoding='utf-8-sig')
     
     print(f"Dados salvos em: {caminho_arquivo}")

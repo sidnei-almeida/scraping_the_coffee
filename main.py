@@ -126,8 +126,8 @@ def executar_coleta_completa():
     print(f"\n{Cores.AMARELO}⚠️  ATENÇÃO:{Cores.RESET}")
     print(f"   • Este processo pode demorar {Cores.VERMELHO}15-30 minutos{Cores.RESET}")
     print(f"   • Será coletado dados de {Cores.AMARELO}~61 produtos{Cores.RESET}")
-    print(f"   • O navegador irá abrir automaticamente")
-    print(f"   • {Cores.VERDE}NÃO feche o navegador manualmente{Cores.RESET}")
+    print(f"   • O navegador rodará em modo headless (sem interface gráfica)")
+    print(f"   • {Cores.VERDE}NÃO interrompa o processo manualmente{Cores.RESET}")
     
     confirmar = input(f"\n{Cores.MAGENTA}🤔 Tem certeza que deseja continuar? (s/N): {Cores.RESET}").lower()
     
